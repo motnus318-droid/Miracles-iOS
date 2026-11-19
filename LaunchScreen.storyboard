@@ -7,7 +7,7 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--Launch Screen: same as the store warm-up (logo 190x178, screen center + 7, #FBF9F7)-->
+        <!--Launch Screen: same as the store warm-up (logo 190x178, safe-area center + 7, #FBF9F7)-->
         <scene sceneID="EHf-IW-A2E">
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
@@ -27,7 +27,7 @@
                         <color key="backgroundColor" red="0.98431372549019602" green="0.97647058823529409" blue="0.96862745098039216" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="SpL-g0-a01" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="SpX-a0-a01"/>
-                            <constraint firstItem="SpL-g0-a01" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="7" id="SpY-a0-a01"/>
+                            <constraint firstItem="SpL-g0-a01" firstAttribute="centerY" secondItem="6Tk-OE-BBY" secondAttribute="centerY" constant="7" id="SpY-a0-a01"/>
                         </constraints>
                     </view>
                 </viewController>

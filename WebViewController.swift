@@ -27,9 +27,12 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         webView = makeWebView(configuration: Self.makeConfiguration(handler: self))
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
+        // V2: المتجر بين شريط الحالة وخط الرجوع (زي تطبيق أندرويد)، والمساحتين فوق وتحت بلون المتجر (theme-color).
+        // (V1 كان تحت شريط الحالة ← زر الإغلاق والجرس في نافذة «أهلاً بك» طلعوا تحت الساعة)
+        let safe = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            webView.topAnchor.constraint(equalTo: safe.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
@@ -66,11 +69,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         wv.isOpaque = false
         wv.backgroundColor = Brand.background
         wv.scrollView.backgroundColor = Brand.background
-        wv.scrollView.contentInsetAdjustmentBehavior = .never   // المتجر يرسم تحت شريط الحالة بنفسه (viewport-fit=cover)
+        wv.scrollView.contentInsetAdjustmentBehavior = .never   // الصفحة نفسها داخل المساحة الآمنة (ما يلزمش إزاحة ثانية)
         return wv
     }
 
-    /// نفس شاشة البداية (LaunchScreen) بالضبط: الشعار 190×178 في نص الشاشة + 7 لتحت (زي تسخينة المتجر)،
+    /// نفس شاشة البداية (LaunchScreen) بالضبط: الشعار 190×178 في نص المساحة الآمنة + 7 لتحت (زي تسخينة المتجر)،
     /// تقعد لين المتجر يرسم تسخينته (نفس الشعار في نفس المكان)، فيبانوا شاشة وحدة.
     private func setupSplash() {
         splashView.backgroundColor = Brand.background
@@ -88,7 +91,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             logo.widthAnchor.constraint(equalToConstant: 190),
             logo.heightAnchor.constraint(equalToConstant: 178),
             logo.centerXAnchor.constraint(equalTo: splashView.centerXAnchor),
-            logo.centerYAnchor.constraint(equalTo: splashView.centerYAnchor, constant: 7)
+            // نص المساحة الآمنة = نص المتجر (هو بين شريط الحالة وخط الرجوع) ← نفس مكان تسخينته
+            logo.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor, constant: 7)
         ])
     }
 
