@@ -1,0 +1,105 @@
+# Miracles iOS — بناء للمحاكي + صور شاشة (بدون حساب Apple Developer)
+# يشتغل لحاله مع كل رفع، أو من Actions ← «iOS build» ← Run workflow
+name: iOS build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Xcode (latest stable)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Versions
+        run: |
+          xcodebuild -version
+          sw_vers
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (Simulator)
+        run: |
+          mkdir -p out
+          if ! xcodebuild -project Miracles.xcodeproj -scheme Miracles -configuration Debug \
+               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+               -derivedDataPath build CODE_SIGNING_ALLOWED=NO build > out/build.log 2>&1; then
+            echo "================ BUILD FAILED — الأخطاء ================"
+            grep -E "error:|fatal error|\*\* BUILD FAILED" out/build.log | head -60
+            echo "========================================================="
+            tail -40 out/build.log
+            exit 1
+          fi
+          grep -E "warning:" out/build.log | sort -u | head -40 || true
+          echo "BUILD OK"
+
+      - name: Run on Simulator + screenshots
+        run: |
+          set -x
+          APP=$(find build/Build/Products -maxdepth 2 -name "Miracles.app" -type d | head -1)
+          echo "APP=$APP"
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys, re
+          d = json.load(sys.stdin)["devices"]
+          def ver(rt):
+              m = re.search(r"iOS-(\d+)-(\d+)", rt)
+              return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+          best = None
+          for rt, devs in d.items():
+              if "iOS" not in rt: continue
+              for x in devs:
+                  n = x["name"]
+                  if not n.startswith("iPhone"): continue
+                  score = (n == "iPhone 16", n.startswith("iPhone 16"), ver(rt))
+                  if best is None or score > best[0]: best = (score, x["udid"], n, rt)
+          print(best[1]); print(best[2], best[3], file=sys.stderr)
+          ')
+          echo "UDID=$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p out/shots
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force out/shots/open.mp4 &
+          REC=$!
+          sleep 2
+          xcrun simctl launch "$UDID" ly.miracles.app
+          for t in 1 2 4 8 15; do
+            sleep $([ $t = 1 ] && echo 1 || echo $((t - prev)))
+            prev=$t
+            xcrun simctl io "$UDID" screenshot "out/shots/first-open-${t}s.png"
+          done
+          kill -INT $REC || true
+          sleep 3
+          # فتحة ثانية (بعد ما تسكّر): الكاش والدخول محفوظين
+          xcrun simctl terminate "$UDID" ly.miracles.app || true
+          sleep 2
+          xcrun simctl launch "$UDID" ly.miracles.app
+          sleep 6
+          xcrun simctl io "$UDID" screenshot out/shots/second-open-6s.png
+          ls -la out/shots
+
+      - name: Upload screenshots + log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miracles-ios-${{ github.run_number }}
+          path: out/
+          retention-days: 14

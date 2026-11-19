@@ -1,0 +1,57 @@
+# Miracles iOS — مشروع Xcode يتولّد من هذا الملف بـ XcodeGen على GitHub Actions (ما يحتاجش ماك)
+name: Miracles
+options:
+  bundleIdPrefix: ly.miracles
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: ar
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  Miracles:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Miracles
+    scheme: {}
+    info:
+      path: Miracles/Info.plist
+      properties:
+        CFBundleDisplayName: Miracles
+        CFBundleName: Miracles
+        CFBundleDevelopmentRegion: ar
+        CFBundleLocalizations: [ar]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchStoryboardName: LaunchScreen
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleDarkContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UIUserInterfaceStyle: Light
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        NSPhotoLibraryAddUsageDescription: يُستخدم لحفظ إيصال الطلب في الصور.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ly.miracles.app
+        PRODUCT_NAME: Miracles
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ENABLE_PREVIEWS: NO
+        CODE_SIGN_STYLE: Automatic
