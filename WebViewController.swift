@@ -188,8 +188,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard webView === self.webView else { return }
         failedURL = nil
         offlineView.isHidden = true
-        // احتياط لو رسالة «ready» ما وصلتش
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.hideSplash() }
+        // احتياط لو رسالة «ready» ما وصلتش (load يستنى شعار التسخينة أصلاً: preload في المتجر)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.hideSplash() }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -378,11 +378,17 @@ enum Scripts {
     window.webkit.messageHandlers.mir.postMessage({t:'share',title:String(d.title||''),text:String(d.text||''),url:String(d.url||'')});return Promise.resolve()};}catch(e){}})();
     """
 
-    /// «ready» لما الصفحة تترسم (تسخينة المتجر)، ولون الصفحة (theme-color) لشريط الحالة والخلفية، ويتابع تبديل الوضع الليلي
+    /// «ready» لما شعار تسخينة المتجر يتحمّل ويترسم فعلاً (V2b: قبل كانت مع رسم الصفحة، والشعار لسا يتحمّل من النت ← شاشة فاضية ~3 ث في أول فتحة)،
+    /// أو لما التسخينة تختفي، أو بعد 6 ث كحد أقصى. + لون الصفحة (theme-color) لشريط الحالة والخلفية، ويتابع تبديل الوضع الليلي
     static let pageWatch = """
     (function(){try{var h=window.webkit.messageHandlers.mir;
     var col=function(){var m=document.querySelector('meta[name="theme-color"]');if(m&&m.content)h.postMessage({t:'theme',c:m.content})};
-    col();requestAnimationFrame(function(){requestAnimationFrame(function(){h.postMessage({t:'ready'})})});
-    new MutationObserver(col).observe(document.head,{attributes:true,subtree:true,childList:true,attributeFilter:['content']});}catch(e){}})();
+    col();new MutationObserver(col).observe(document.head,{attributes:true,subtree:true,childList:true,attributeFilter:['content']});
+    var sent=false,go=function(){if(sent)return;sent=true;requestAnimationFrame(function(){requestAnimationFrame(function(){h.postMessage({t:'ready'})})})};
+    var sp=document.getElementById('splash'),l=sp&&sp.querySelector('.sp-l'),bg=l?getComputedStyle(l).backgroundImage:'',u=/url\\(["']?([^"')]+)["']?\\)/.exec(bg||'');
+    if(!sp||!u||sp.classList.contains('out')){go();return}
+    new MutationObserver(function(){if(sp.classList.contains('out'))go()}).observe(sp,{attributes:true,attributeFilter:['class']});
+    setTimeout(go,6000);var im=new Image();im.onload=im.onerror=function(){if(im.decode){im.decode().then(go,go)}else go()};im.src=u[1];
+    }catch(e){try{window.webkit.messageHandlers.mir.postMessage({t:'ready'})}catch(x){}}})();
     """
 }
