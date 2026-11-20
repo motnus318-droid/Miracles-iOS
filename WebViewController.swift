@@ -7,6 +7,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     private var webView: WKWebView!
     private let splashView = UIView()
+    private let slowLabel = UILabel()
     private let offlineView = OfflineView()
     private let monitor = NWPathMonitor()
 
@@ -42,8 +43,14 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         startMonitor()
 
         webView.load(URLRequest(url: Brand.home))
-        // احتياط: لو الصفحة ما ردّتش، شاشة البداية ما تقعدش للأبد
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in self?.hideSplash() }
+        // V4: سقف شاشة البداية 30 ث (كان 12): مع النت الضعيف جداً الشعار يقعد لين المتجر يجهز، بدل صفحة فاضية.
+        // النت مقطوع تماماً ← شاشة «لا يوجد اتصال» قبلها (didFailProvisionalNavigation)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in self?.hideSplash() }
+        // V4: بعد 8 ث وشاشة البداية لسا قدامها: سطر «الاتصال بطيء…» (نفس سطر تسخينة المتجر V106 ونفس مكانه)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            guard let self = self, !self.splashGone else { return }
+            UIView.animate(withDuration: 0.4) { self.slowLabel.alpha = 1 }
+        }
     }
 
     static func makeConfiguration(handler: WKScriptMessageHandler) -> WKWebViewConfiguration {
@@ -82,6 +89,14 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         logo.contentMode = .scaleAspectFit
         logo.translatesAutoresizingMaskIntoConstraints = false
         splashView.addSubview(logo)
+        slowLabel.text = "الاتصال بطيء، جارٍ التحميل…"
+        slowLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        slowLabel.textColor = UIColor(red: 140 / 255, green: 129 / 255, blue: 122 / 255, alpha: 1)   // #8C817A زي المتجر
+        slowLabel.textAlignment = .center
+        slowLabel.numberOfLines = 0
+        slowLabel.alpha = 0
+        slowLabel.translatesAutoresizingMaskIntoConstraints = false
+        splashView.addSubview(slowLabel)
         view.addSubview(splashView)
         NSLayoutConstraint.activate([
             splashView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -92,13 +107,21 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             logo.heightAnchor.constraint(equalToConstant: 178),
             logo.centerXAnchor.constraint(equalTo: splashView.centerXAnchor),
             // نص المساحة الآمنة = نص المتجر (هو بين شريط الحالة وخط الرجوع) ← نفس مكان تسخينته
-            logo.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor, constant: 7)
+            logo.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor, constant: 7),
+            // نفس مكان سطر المتجر: top = نص الصفحة + 120
+            slowLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor, constant: 120),
+            slowLabel.leadingAnchor.constraint(equalTo: splashView.leadingAnchor, constant: 24),
+            slowLabel.trailingAnchor.constraint(equalTo: splashView.trailingAnchor, constant: -24)
         ])
     }
 
     private func hideSplash() {
         guard !splashGone else { return }
         splashGone = true
+        if slowLabel.alpha > 0 {
+            // سطر «الاتصال بطيء» ظاهر: نخلّوا سطر تسخينة المتجر يبان على طول (هو يحسب 8 ث من فتحة الصفحة، أبطأ بشوية) باش ما يرمشش
+            webView.evaluateJavaScript("(function(){var e=document.querySelector('#splash .sp-slow');if(e){e.style.animation='none';e.style.opacity='1'}})()", completionHandler: nil)
+        }
         UIView.animate(withDuration: 0.12, animations: { self.splashView.alpha = 0 }) { _ in
             self.splashView.removeFromSuperview()
         }
