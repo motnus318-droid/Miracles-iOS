@@ -77,6 +77,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         wv.backgroundColor = Brand.background
         wv.scrollView.backgroundColor = Brand.background
         wv.scrollView.contentInsetAdjustmentBehavior = .never   // الصفحة نفسها داخل المساحة الآمنة (ما يلزمش إزاحة ثانية)
+        // V6 (معتز، فيديو 21/11): بدون ارتداد للصفحة كاملة. كان السحب في أول/آخر الصفحة يمطّط المتجر كله ومعاه الهيدر وشريط الأيقونات.
+        // التمرير داخل صفحات المتجر (عناصر لحالها) يقعد بارتداده الطبيعي؛ اللي انقفل بس ارتداد الغلاف كامل
+        wv.scrollView.bounces = false
+        wv.scrollView.alwaysBounceVertical = false
+        wv.scrollView.alwaysBounceHorizontal = false
         return wv
     }
 
@@ -119,9 +124,22 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard !splashGone else { return }
         splashGone = true
         if slowLabel.alpha > 0 {
-            // سطر «الاتصال بطيء» ظاهر: نخلّوا سطر تسخينة المتجر يبان على طول (هو يحسب 8 ث من فتحة الصفحة، أبطأ بشوية) باش ما يرمشش
-            webView.evaluateJavaScript("(function(){var e=document.querySelector('#splash .sp-slow');if(e){e.style.animation='none';e.style.opacity='1'}})()", completionHandler: nil)
+            // سطر «الاتصال بطيء» ظاهر: سطر تسخينة المتجر يبان على طول (هو يحسب 8 ث من فتحة الصفحة، أبطأ بشوية).
+            // V6: شاشة التطبيق تتسكّر بس بعد ما الصفحة ترد إنها حطّت السطر (زي أندرويد 1.1.1)، احتياط 0.4 ث لو ما ردّتش.
+            // (V4 كانت تتسكّر على طول ← السطر يختفي ~1 ث قبل ما يرجع)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.fadeSplash() }
+            webView.evaluateJavaScript("(function(){var e=document.querySelector('#splash .sp-slow');if(e){e.style.animation='none';e.style.opacity='1'}return 1})()") { [weak self] _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self?.fadeSplash() }
+            }
+        } else {
+            fadeSplash()
         }
+    }
+
+    private var splashFading = false
+    private func fadeSplash() {
+        guard !splashFading else { return }
+        splashFading = true
         UIView.animate(withDuration: 0.12, animations: { self.splashView.alpha = 0 }) { _ in
             self.splashView.removeFromSuperview()
         }
